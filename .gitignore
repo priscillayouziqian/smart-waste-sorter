@@ -1,0 +1,14 @@
+# Environment variables
+# Never commit this file!
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+*.venv/
+env/
