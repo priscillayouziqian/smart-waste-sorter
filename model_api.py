@@ -48,7 +48,7 @@ def predict_local_image(image_path):
             
             print("\n--- Prediction Results ---")
             # Nicely print the JSON output
-            print(json.dumps(results, indent=4))
+            # print(json.dumps(results, indent=4))
             
             # You can also iterate through predictions
             for prediction in results.get("predictions", []):
