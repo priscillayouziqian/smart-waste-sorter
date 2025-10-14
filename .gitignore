@@ -1,14 +1,28 @@
-# Environment variables
-# Never commit this file!
-.env
+# General
+.DS_Store
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Environment Variables
+# Ignore all .env files in any subdirectory
+**/.env
 
-# Virtual environment
-venv/
-*.venv/
-env/
+# Python Backend
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/venv/
+backend/*.venv/
+backend/env/
+
+# Node / Expo Frontend
+frontend/node_modules/
+frontend/.expo/
+frontend/npm-debug.log
+frontend/yarn-error.log
+frontend/web-build/
+
+# IDE / Editor specific
+.vscode/
+
+# .expo/
+.expo/

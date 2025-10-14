@@ -42,8 +42,17 @@ def predict():
         response = requests.post(PREDICTION_URL, headers=headers, data=image_data)
         response.raise_for_status()  # Raise an exception for bad status codes
 
+        # --- Process and Log the Response on the Server ---
+        results = response.json()
+        print("\n--- Prediction Results (Server Log) ---")
+        for prediction in results.get("predictions", []):
+            tag = prediction.get("tagName")
+            probability = prediction.get("probability") * 100
+            print(f"- Tag: {tag}, Probability: {probability:.2f}%")
+        print("-------------------------------------\n")
+
         # Return the JSON response from Azure to the mobile app
-        return jsonify(response.json())
+        return jsonify(results)
 
     except requests.exceptions.HTTPError as e:
         return jsonify({"error": f"HTTP error: {e.response.status_code}", "details": e.response.text}), 500
