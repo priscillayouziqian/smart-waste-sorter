@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Button, Image, ActivityIndicator, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, View, Button, Image, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 
@@ -80,8 +80,19 @@ export default function App() {
       }
     }
 
-    if (cameraPermissionInformation.status === ImagePicker.PermissionStatus.DENIED || mediaLibraryPermissionInformation.status === MediaLibrary.PermissionStatus.DENIED) {
-      Alert.alert("Insufficient Permissions", "Please grant camera and media library permissions in your device settings to use this feature.");
+    // Handle case where permissions are denied
+    const cameraDenied = cameraPermissionInformation.status === ImagePicker.PermissionStatus.DENIED;
+    const mediaDenied = mediaLibraryPermissionInformation.status === MediaLibrary.PermissionStatus.DENIED;
+
+    if (cameraDenied || mediaDenied) {
+      Alert.alert(
+        "Insufficient Permissions",
+        "To use this feature, you need to grant camera and media library access in your device settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() }
+        ]
+      );
       return false;
     }
 
