@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, Button, Image, ActivityIndicator, Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 
 // --- Configuration ---
 // The API URL is loaded from an environment variable.
@@ -15,6 +16,10 @@ export default function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [predictions, setPredictions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Permissions state
+  const [cameraPermissionInformation, requestCameraPermission] = ImagePicker.useCameraPermissions();
+  const [mediaLibraryPermissionInformation, requestMediaLibraryPermission] = MediaLibrary.usePermissions();
 
   // Function to pick an image from the gallery
   const pickImage = async () => {
@@ -31,6 +36,57 @@ export default function App() {
       handleUpload(result.assets[0]);
     }
   };
+
+  // Function to verify permissions and then launch the camera
+  const takePhoto = async () => {
+    const hasPermission = await verifyPermissions();
+    if (!hasPermission) {
+      return;
+    }
+
+    const image = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!image.canceled) {
+      setSelectedImage(image.assets[0]);
+      setPredictions([]);
+      // Save the photo to the device's library
+      await MediaLibrary.saveToLibraryAsync(image.assets[0].uri);
+      Alert.alert("Success", "Photo saved to your library!");
+      handleUpload(image.assets[0]);
+    }
+  };
+
+  // Helper function to request camera permissions
+  async function verifyPermissions() {
+    // Request camera permissions if not determined
+    if (cameraPermissionInformation.status === ImagePicker.PermissionStatus.UNDETERMINED) {
+      const cameraResponse = await requestCameraPermission();
+      if (!cameraResponse.granted) {
+        Alert.alert("Insufficient Permissions", "You need to grant camera permissions to take a photo.");
+        return false;
+      }
+    }
+
+    // Request media library permissions if not determined
+    if (mediaLibraryPermissionInformation.status === MediaLibrary.PermissionStatus.UNDETERMINED) {
+      const mediaResponse = await requestMediaLibraryPermission();
+      if (!mediaResponse.granted) {
+        Alert.alert("Insufficient Permissions", "You need to grant media library permissions to save the photo.");
+        return false;
+      }
+    }
+
+    if (cameraPermissionInformation.status === ImagePicker.PermissionStatus.DENIED || mediaLibraryPermissionInformation.status === MediaLibrary.PermissionStatus.DENIED) {
+      Alert.alert("Insufficient Permissions", "Please grant camera and media library permissions in your device settings to use this feature.");
+      return false;
+    }
+
+    return true;
+  }
 
   // Function to upload the image and get predictions
   const handleUpload = async (image) => {
@@ -72,7 +128,10 @@ export default function App() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Smart Waste Sorter</Text>
-      <Button title="Select an Image" onPress={pickImage} />
+      <View style={styles.buttonContainer}>
+        <Button title="Select an Image" onPress={pickImage} />
+        <Button title="Take a Photo" onPress={takePhoto} />
+      </View>
 
       {selectedImage && (
         <Image source={{ uri: selectedImage.uri }} style={styles.image} />
@@ -82,12 +141,15 @@ export default function App() {
 
       {predictions.length > 0 && (
         <View style={styles.resultsContainer}>
-          <Text style={styles.resultsTitle}>Prediction Results:</Text>
-          {predictions.map((p, index) => (
-            <Text key={index} style={styles.resultText}>
-              - {p.tagName}: {(p.probability * 100).toFixed(2)}%
-            </Text>
-          ))}
+          <Text style={styles.resultsTitle}>Top 3 Predictions:</Text>
+          {predictions
+            .sort((a, b) => b.probability - a.probability) // Sort by probability descending
+            .slice(0, 3) // Get the top 3
+            .map((p, index) => (
+              <Text key={index} style={styles.resultText}>
+                - {p.tagName}: {(p.probability * 100).toFixed(2)}%
+              </Text>
+            ))}
         </View>
       )}
     </View>
@@ -106,6 +168,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '80%',
   },
   image: {
     width: 300,
