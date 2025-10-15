@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Button, Image, ActivityIndicator, Alert, Platform, Linking } from 'react-native';
+import { StyleSheet, View, Image, Alert, Platform, Linking } from 'react-native';
+import { Button, Text, ActivityIndicator, Portal, Dialog, Card } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 
@@ -8,14 +9,37 @@ import * as MediaLibrary from 'expo-media-library';
 // See the .env.example file for more information.
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
+// --- Waste Category Mapping (based on NYC rules) ---
+const WASTE_CATEGORIES = {
+  recyclable: {
+    tags: ['cardboard', 'plastic', 'metal', 'glass', 'paper'],
+    color: '#007AFF', // Blue for Recyclable
+  },
+  compostable: {
+    tags: ['leaf', 'vegetation', 'food organics'],
+    color: '#34C759', // Green for Compostable
+  },
+  landfill: {
+    tags: ['miscellaneous trash'],
+    color: '#8E8E93' }, // Gray for Landfill
+};
+
+const getCategory = (tagName) => {
+  for (const category in WASTE_CATEGORIES) {
+    if (WASTE_CATEGORIES[category].tags.includes(tagName.toLowerCase())) return category;
+  }
+  return 'landfill'; // Default to landfill if not found
+};
+
 export default function App() {
   // Sanity check to ensure the environment variable is set.
   if (!API_URL) {
     Alert.alert("Configuration Error", "The API URL is not configured. Please create a .env file in the frontend/smart-waste-sorter-app directory. See .env.example for details.");
   }
   const [selectedImage, setSelectedImage] = useState(null);
-  const [predictions, setPredictions] = useState([]);
+  const [classificationResult, setClassificationResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
 
   // Permissions state
   const [cameraPermissionInformation, requestCameraPermission] = ImagePicker.useCameraPermissions();
@@ -32,7 +56,7 @@ export default function App() {
 
     if (!result.canceled) {
       setSelectedImage(result.assets[0]);
-      setPredictions([]); // Clear previous predictions
+      setClassificationResult(null); // Clear previous result
       handleUpload(result.assets[0]);
     }
   };
@@ -52,7 +76,7 @@ export default function App() {
 
     if (!image.canceled) {
       setSelectedImage(image.assets[0]);
-      setPredictions([]);
+      setClassificationResult(null);
       // Save the photo to the device's library
       await MediaLibrary.saveToLibraryAsync(image.assets[0].uri);
       Alert.alert("Success", "Photo saved to your library!");
@@ -126,43 +150,71 @@ export default function App() {
         throw new Error(result.error || 'Failed to get prediction');
       }
 
-      setPredictions(result.predictions || []);
+      // Process the prediction to determine the category
+      if (result.predictions && result.predictions.length > 0) {
+        const topPrediction = result.predictions.sort((a, b) => b.probability - a.probability)[0];
+        const category = getCategory(topPrediction.tagName);
+        
+        setClassificationResult({
+          category: category,
+          color: WASTE_CATEGORIES[category].color,
+          item: topPrediction.tagName,
+          confidence: topPrediction.probability,
+        });
+        setIsDialogVisible(true);
+      } else {
+        setClassificationResult(null);
+      }
     } catch (error) {
       console.error("Upload Error:", error);
       Alert.alert("Error", `Failed to get prediction: ${error.message}`);
-      setPredictions([]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const hideDialog = () => setIsDialogVisible(false);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Smart Waste Sorter</Text>
+      <Text variant="headlineLarge" style={styles.title}>Smart Waste Sorter</Text>
       <View style={styles.buttonContainer}>
-        <Button title="Select an Image" onPress={pickImage} />
-        <Button title="Take a Photo" onPress={takePhoto} />
+        <Button icon="image" mode="contained" onPress={pickImage}>Select Image</Button>
+        <Button icon="camera" mode="contained" onPress={takePhoto}>Take Photo</Button>
       </View>
 
       {selectedImage && (
         <Image source={{ uri: selectedImage.uri }} style={styles.image} />
       )}
 
-      {isLoading && <ActivityIndicator size="large" color="#007AFF" style={{ marginVertical: 20 }} />}
+      {isLoading && <ActivityIndicator animating={true} size="large" style={{ marginVertical: 20 }} />}
 
-      {predictions.length > 0 && (
-        <View style={styles.resultsContainer}>
-          <Text style={styles.resultsTitle}>Top 3 Predictions:</Text>
-          {predictions
-            .sort((a, b) => b.probability - a.probability) // Sort by probability descending
-            .slice(0, 3) // Get the top 3
-            .map((p, index) => (
-              <Text key={index} style={styles.resultText}>
-                - {p.tagName}: {(p.probability * 100).toFixed(2)}%
-              </Text>
-            ))}
-        </View>
+      {/* This Card will display the result on the main screen after the dialog is dismissed */}
+      {classificationResult && !isLoading && !isDialogVisible && (
+        <Card style={styles.resultCard}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.resultCardCategory}>{classificationResult.category.toUpperCase()}</Text>
+            <Text variant="bodyLarge">Item: <Text style={styles.bold}>{classificationResult.item}</Text></Text>
+            <Text variant="bodyLarge">Confidence: <Text style={styles.bold}>{(classificationResult.confidence * 100).toFixed(2)}%</Text></Text>
+          </Card.Content>
+        </Card>
       )}
+
+      {classificationResult && (
+        <Portal>
+          <Dialog visible={isDialogVisible} onDismiss={hideDialog}>
+            <Dialog.Title style={styles.resultCardCategory}>{classificationResult.category.toUpperCase()}</Dialog.Title>
+            <Dialog.Content>
+              <Text variant="bodyLarge" style={styles.resultCardText}>Item: <Text style={styles.bold}>{classificationResult.item}</Text></Text>
+              <Text variant="bodyLarge" style={styles.resultCardText}>Confidence: <Text style={styles.bold}>{(classificationResult.confidence * 100).toFixed(2)}%</Text></Text>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={hideDialog}>OK</Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+      )}
+
     </View>
   );
 }
@@ -176,14 +228,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
-  },
+    textAlign: 'center',  },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '80%',
+    justifyContent: 'center',
+    width: '100%',
+    gap: 20, // Adds space between the buttons
   },
   image: {
     width: 300,
@@ -193,7 +245,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
   },
-  resultsContainer: { marginTop: 20, alignItems: 'flex-start' },
-  resultsTitle: { fontSize: 18, fontWeight: 'bold' },
-  resultText: { fontSize: 16, marginTop: 4 },
+  resultCard: {
+    width: '90%',
+    marginTop: 20,
+  },
+  resultCardCategory: {
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  resultCardText: {
+    marginTop: 4,
+  },
+  bold: {
+    fontWeight: 'bold',
+  },
 });
