@@ -3,3 +3,6 @@ python-dotenv
 Flask
 Flask-Cors
 gunicorn
+Flask-SQLAlchemy
+Pillow
+psycopg2-binary # app needs a "driver" to communicate with a PostgreSQL database. The standard one is psycopg2
