@@ -6,7 +6,6 @@ import * as MediaLibrary from 'expo-media-library';
 
 // --- Configuration ---
 // The API URL is loaded from an environment variable.
-// See the .env.example file for more information.
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // --- Waste Category Mapping (based on NYC rules) ---
@@ -31,10 +30,10 @@ const getCategory = (tagName) => {
   return 'landfill'; // Default to landfill if not found
 };
 
-export default function App() {
+export default function PredictScreen() {
   // Sanity check to ensure the environment variable is set.
   if (!API_URL) {
-    Alert.alert("Configuration Error", "The API URL is not configured. Please create a .env file in the frontend/smart-waste-sorter-app directory. See .env.example for details.");
+    Alert.alert("Configuration Error", "The API URL is not configured. Please create a .env file. See .env.example for details.");
   }
   const [selectedImage, setSelectedImage] = useState(null);
   const [classificationResult, setClassificationResult] = useState(null);
@@ -45,7 +44,6 @@ export default function App() {
   const [cameraPermissionInformation, requestCameraPermission] = ImagePicker.useCameraPermissions();
   const [mediaLibraryPermissionInformation, requestMediaLibraryPermission] = MediaLibrary.usePermissions();
 
-  // Function to pick an image from the gallery
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -136,7 +134,7 @@ export default function App() {
     });
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(`${API_URL}/predict`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -177,7 +175,6 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Text variant="headlineLarge" style={styles.title}>Smart Waste Sorter</Text>
       <View style={styles.buttonContainer}>
         <Button icon="image" mode="contained" onPress={pickImage}>Select Image</Button>
         <Button icon="camera" mode="contained" onPress={takePhoto}>Take Photo</Button>
@@ -227,10 +224,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
