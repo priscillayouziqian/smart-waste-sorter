@@ -173,6 +173,19 @@ def predict_text():
         # Parse the JSON string into a Python dictionary
         result_data = json.loads(result_json_string)
 
+        # --- Save the text prediction to the database ---
+        # We don't have an image, so image_thumbnail will be None.
+        # We don't have a probability score, so probability will be None.
+        text_history_entry = PredictionHistory(
+            image_thumbnail=None,
+            predicted_tag=result_data.get('item'),
+            probability=None  # OpenAI does not provide a confidence score
+        )
+        db.session.add(text_history_entry)
+        db.session.commit()
+        logging.info(f"Successfully saved text prediction to database.")
+
+
         # The result_data should be like {"category": "...", "item": "..."}
         return jsonify(result_data)
 

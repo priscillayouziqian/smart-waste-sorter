@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Image, Alert, Platform, Linking } from 'react-native';
-import { Button, Text, ActivityIndicator, Portal, Dialog, Card, TextInput, Divider } from 'react-native-paper';
+import { StyleSheet, View, Image, Alert, Platform, Linking, ScrollView } from 'react-native';
+import { Button, Text, ActivityIndicator, Portal, Dialog, Card, TextInput } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 
@@ -40,6 +40,7 @@ export default function PredictScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [textDescription, setTextDescription] = useState('');
+  const [showTextFallback, setShowTextFallback] = useState(false);
 
   // Permissions state
   const [cameraPermissionInformation, requestCameraPermission] = ImagePicker.useCameraPermissions();
@@ -56,6 +57,7 @@ export default function PredictScreen() {
     if (!result.canceled) {
       setSelectedImage(result.assets[0]);
       setClassificationResult(null); // Clear previous result
+      setShowTextFallback(false); // Hide fallback on new image selection
       handleUpload(result.assets[0]);
     }
   };
@@ -76,6 +78,7 @@ export default function PredictScreen() {
     if (!image.canceled) {
       setSelectedImage(image.assets[0]);
       setClassificationResult(null);
+      setShowTextFallback(false); // Hide fallback on new photo
       // Save the photo to the device's library
       await MediaLibrary.saveToLibraryAsync(image.assets[0].uri);
       Alert.alert("Success", "Photo saved to your library!");
@@ -153,6 +156,13 @@ export default function PredictScreen() {
       if (result.predictions && result.predictions.length > 0) {
         const topPrediction = result.predictions.sort((a, b) => b.probability - a.probability)[0];
         const category = getCategory(topPrediction.tagName);
+
+        // Conditionally show the text input fallback
+        if (topPrediction.probability < 0.85) {
+          setShowTextFallback(true);
+        } else {
+          setShowTextFallback(false);
+        }
         
         setClassificationResult({
           category: category,
@@ -182,6 +192,7 @@ export default function PredictScreen() {
     setIsLoading(true);
     setSelectedImage(null); // Clear any selected image
     setClassificationResult(null);
+    setShowTextFallback(false); // Hide the fallback after using it
 
     try {
       const response = await fetch(`${API_URL}/predict-text`, {
@@ -203,9 +214,10 @@ export default function PredictScreen() {
         category: result.category,
         color: WASTE_CATEGORIES[result.category]?.color || '#8E8E93', // Use optional chaining and a fallback color
         item: result.item,
-        confidence: 1, // Confidence is not applicable for text, but we can set it to 1
+        confidence: null, // Confidence is not applicable for text predictions
       });
       setIsDialogVisible(true);
+      setTextDescription(''); // Clear the input field for a better user experience
 
     } catch (error) {
       console.error("Text Prediction Error:", error);
@@ -218,32 +230,11 @@ export default function PredictScreen() {
   const hideDialog = () => setIsDialogVisible(false);
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.buttonContainer}>
         <Button icon="image" mode="contained" onPress={pickImage}>Select Image</Button>
         <Button icon="camera" mode="contained" onPress={takePhoto}>Take Photo</Button>
       </View>
-
-      <View style={styles.dividerContainer}>
-        <Divider style={styles.divider} />
-        <Text style={styles.dividerText}>OR</Text>
-        <Divider style={styles.divider} />
-      </View>
-
-      <TextInput
-        label="Describe the item (e.g., 'greasy pizza box')"
-        value={textDescription}
-        onChangeText={setTextDescription}
-        style={styles.textInput}
-      />
-      <Button icon="text-box-search" mode="contained" onPress={handleTextPrediction} style={styles.textButton}>
-        Predict from Description
-      </Button>
-
-      {selectedImage && (
-        <Image source={{ uri: selectedImage.uri }} style={styles.image} />
-      )}
-
       {isLoading && <ActivityIndicator animating={true} size="large" style={{ marginVertical: 20 }} />}
 
       {/* This Card will display the result on the main screen after the dialog is dismissed */}
@@ -252,9 +243,34 @@ export default function PredictScreen() {
           <Card.Content>
             <Text variant="titleLarge" style={styles.resultCardCategory}>{classificationResult.category.toUpperCase()}</Text>
             <Text variant="bodyLarge">Item: <Text style={styles.bold}>{classificationResult.item}</Text></Text>
-            <Text variant="bodyLarge">Confidence: <Text style={styles.bold}>{(classificationResult.confidence * 100).toFixed(2)}%</Text></Text>
+            {classificationResult.confidence !== null && (
+              <Text variant="bodyLarge">Confidence: <Text style={styles.bold}>{(classificationResult.confidence * 100).toFixed(2)}%</Text></Text>
+            )}
           </Card.Content>
         </Card>
+      )}
+
+      {/* Conditionally render the text input section as a fallback */}
+      {showTextFallback && !isLoading && (
+        <View style={styles.fallbackContainer}>
+          <Text style={styles.fallbackText}>Not the right prediction? Describe the item instead.</Text>
+          <TextInput
+            label="Describe the item (e.g., 'greasy pizza box')"
+            value={textDescription}
+            onChangeText={setTextDescription}
+            style={styles.textInput}
+          />
+          <Button 
+            icon="text-box-search" 
+            mode="contained" 
+            onPress={handleTextPrediction} 
+            style={styles.textButton}
+          >Predict from Description</Button>
+        </View>
+      )}
+
+      {selectedImage && (
+        <Image source={{ uri: selectedImage.uri }} style={styles.image} />
       )}
 
       {classificationResult && (
@@ -263,7 +279,9 @@ export default function PredictScreen() {
             <Dialog.Title style={styles.resultCardCategory}>{classificationResult.category.toUpperCase()}</Dialog.Title>
             <Dialog.Content>
               <Text variant="bodyLarge" style={styles.resultCardText}>Item: <Text style={styles.bold}>{classificationResult.item}</Text></Text>
-              <Text variant="bodyLarge" style={styles.resultCardText}>Confidence: <Text style={styles.bold}>{(classificationResult.confidence * 100).toFixed(2)}%</Text></Text>
+              {classificationResult.confidence !== null && (
+                <Text variant="bodyLarge" style={styles.resultCardText}>Confidence: <Text style={styles.bold}>{(classificationResult.confidence * 100).toFixed(2)}%</Text></Text>
+              )}
             </Dialog.Content>
             <Dialog.Actions>
               <Button onPress={hideDialog}>OK</Button>
@@ -272,13 +290,13 @@ export default function PredictScreen() {
         </Portal>
       )}
 
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1, // Use flexGrow to allow the container to expand and enable scrolling
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -290,24 +308,25 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 20, // Adds space between the buttons
   },
-  dividerContainer: {
-    flexDirection: 'row',
+  fallbackContainer: {
+    width: '100%',
+    marginTop: 30,
     alignItems: 'center',
-    width: '90%',
-    marginVertical: 25,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingTop: 20,
   },
-  divider: {
-    flex: 1,
-  },
-  dividerText: {
-    marginHorizontal: 10,
+  fallbackText: {
+    fontSize: 16,
     color: 'gray',
+    marginBottom: 15,
+    textAlign: 'center',
   },
   textInput: {
     width: '100%',
     marginBottom: 15,
   },
-  textButton: { marginBottom: 20 },
+  textButton: { width: '100%', marginBottom: 20 },
   image: {
     width: 300,
     height: 300,
