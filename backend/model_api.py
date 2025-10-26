@@ -70,8 +70,6 @@ def predict_from_text(description):
     """
     Sends a text description to the local Flask server's /predict-text endpoint.
     """
-    # The URL for your local server
-    url = "http://127.0.0.1:5000/predict-text"
     # Use the deployed Render URL if available, otherwise default to the local server.
     base_url = RENDER_BACKEND_URL or "http://127.0.0.1:5000"
     url = f"{base_url}/predict-text"

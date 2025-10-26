@@ -30,9 +30,17 @@ This repository is a monorepo containing two main parts:
 
 This method runs both the frontend and backend on your local machine. It's ideal for development and testing.
 
-Backend: backend/python server.py
+1.  **Start the Backend:**
+    (From the project root directory)
+    ```bash
+    python backend/server.py
+    ```
 
-Frontend: frontend/smart-waste-sorter-app/npx expo start
+2.  **Start the Frontend:**
+    (From the `frontend/smart-waste-sorter-app` directory)
+    ```bash
+    npx expo start
+    ```
 
 **run both commands in different terminals**
 
