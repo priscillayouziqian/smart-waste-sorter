@@ -10,9 +10,9 @@ class PredictionHistory(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     # Store the compressed image thumbnail data directly in the database
-    image_thumbnail = db.Column(db.LargeBinary, nullable=False)
+    image_thumbnail = db.Column(db.LargeBinary, nullable=True)
     predicted_tag = db.Column(db.String(100), nullable=False)
-    probability = db.Column(db.Float, nullable=False)
+    probability = db.Column(db.Float, nullable=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def __repr__(self):
