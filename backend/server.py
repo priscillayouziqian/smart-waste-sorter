@@ -3,6 +3,8 @@ import sys
 import requests
 import logging
 import uuid
+import openai
+import json
 from io import BytesIO
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -35,10 +37,23 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # --- Configuration & Sanity Check ---
 PREDICTION_URL = os.getenv("PREDICTION_URL")
 PREDICTION_KEY = os.getenv("PREDICTION_KEY")
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY")
+AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
 
 if not all([PREDICTION_URL, PREDICTION_KEY]):
     logging.error("FATAL: PREDICTION_URL and PREDICTION_KEY must be set in environment.")
     sys.exit(1)
+
+if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_OPENAI_DEPLOYMENT_NAME]):
+    logging.warning("Azure OpenAI environment variables are not fully set. The /predict-text endpoint will not work.")
+    openai_client = None
+else:
+    openai_client = openai.AzureOpenAI(
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        api_key=AZURE_OPENAI_KEY,
+        api_version="2024-02-01" # A recent, stable API version
+    )
 
 if not DATABASE_URL:
     logging.warning("DATABASE_URL not set, falling back to local SQLite database.")
@@ -116,6 +131,57 @@ def predict():
     except Exception as e:
         logging.error(f"An unexpected error occurred: {str(e)}")
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route("/predict-text", methods=["POST"])
+def predict_text():
+    """
+    Receives a text description and uses Azure OpenAI to classify it.
+    """
+    if not openai_client:
+        return jsonify({"error": "Azure OpenAI service is not configured on the server."}), 503
+
+    data = request.get_json()
+    if not data or 'description' not in data:
+        return jsonify({"error": "Request must include a 'description' field."}), 400
+
+    user_description = data['description']
+    logging.info(f"Received text prediction request for: '{user_description}'")
+
+    # This is the "System Prompt" that instructs the AI on how to behave.
+    system_prompt = (
+        "You are an expert waste sorting assistant for New York City. Based on the user's description of an item, "
+        "determine if it is 'recyclable', 'compostable', or 'landfill'. "
+        "Also, provide a simple, common name for the item. "
+        "Respond ONLY with a valid JSON object containing 'category' and 'item'. "
+        "Example: {\"category\": \"recyclable\", \"item\": \"plastic bottle\"}"
+    )
+
+    try:
+        response = openai_client.chat.completions.create(
+            model=AZURE_OPENAI_DEPLOYMENT_NAME,
+            response_format={"type": "json_object"}, # Enforce JSON output
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_description}
+            ]
+        )
+
+        # Extract the JSON string from the response
+        result_json_string = response.choices[0].message.content
+        logging.info(f"Received from OpenAI: {result_json_string}")
+
+        # Parse the JSON string into a Python dictionary
+        result_data = json.loads(result_json_string)
+
+        # The result_data should be like {"category": "...", "item": "..."}
+        return jsonify(result_data)
+
+    except json.JSONDecodeError:
+        logging.error(f"Failed to decode JSON from OpenAI response: {result_json_string}")
+        return jsonify({"error": "AI returned an invalid format."}), 500
+    except Exception as e:
+        logging.error(f"An error occurred with Azure OpenAI: {str(e)}")
+        return jsonify({"error": "An error occurred while communicating with the AI service."}), 500
 
 @app.route("/history", methods=["GET"])
 def get_history():

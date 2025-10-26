@@ -1,5 +1,4 @@
 import requests
-import json
 import argparse
 import os
 from dotenv import load_dotenv
@@ -13,6 +12,7 @@ load_dotenv()
 # Load from environment variables
 PREDICTION_URL = os.getenv("PREDICTION_URL")
 PREDICTION_KEY = os.getenv("PREDICTION_KEY")
+RENDER_BACKEND_URL = os.getenv("RENDER_BACKEND_URL")
 
 # --- Sanity Check ---
 if not PREDICTION_URL or not PREDICTION_KEY:
@@ -56,24 +56,59 @@ def predict_local_image(image_path):
                 probability = prediction.get("probability") * 100
                 print(f"- Tag: {tag}, Probability: {probability:.2f}%")
 
-    except FileNotFoundError:
-        print(f"Error: The file '{image_path}' was not found. Please check the path.")
     except requests.exceptions.HTTPError as e:
         print(f"An HTTP error occurred: {e.response.status_code} {e.response.reason}")
         print(f"Response body: {e.response.text}")
     except requests.exceptions.RequestException as e:
         print(f"An error occurred while making the request: {e}")
+    except FileNotFoundError:
+        print(f"Error: The file '{image_path}' was not found. Please check the path.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
+def predict_from_text(description):
+    """
+    Sends a text description to the local Flask server's /predict-text endpoint.
+    """
+    # The URL for your local server
+    url = "http://127.0.0.1:5000/predict-text"
+    # Use the deployed Render URL if available, otherwise default to the local server.
+    base_url = RENDER_BACKEND_URL or "http://127.0.0.1:5000"
+    url = f"{base_url}/predict-text"
+
+    headers = {"Content-Type": "application/json"}
+    payload = {"description": description}
+
+    try:
+        print(f"Sending text prediction request to: {url}")
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+
+        print("Request successful!")
+        results = response.json()
+
+        print("\n--- Text Prediction Result ---")
+        print(f"- Item: {results.get('item')}")
+        print(f"- Category: {results.get('category')}")
+
+    except requests.exceptions.HTTPError as e:
+        print(f"An HTTP error occurred: {e.response.status_code} - {e.response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while making the request: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
     # Set up argument parser
     parser = argparse.ArgumentParser(
-        description="Predict waste type from a local image using Azure Custom Vision."
+        description="Test prediction endpoints. Use --image for Azure Custom Vision or --text for local text prediction."
     )
-    parser.add_argument("image_path", help="Path to the local image file for prediction.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--image", dest="image_path", help="Path to a local image file for prediction via Azure.")
+    group.add_argument("--text", dest="text_description", help="A text description for prediction via the local server.")
     args = parser.parse_args()
 
-    # Call the prediction function with the provided image path
-    predict_local_image(args.image_path)
+    if args.image_path:
+        predict_local_image(args.image_path)
+    elif args.text_description:
+        predict_from_text(args.text_description)

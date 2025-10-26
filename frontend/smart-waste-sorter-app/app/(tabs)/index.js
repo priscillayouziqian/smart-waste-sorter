@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Image, Alert, Platform, Linking } from 'react-native';
-import { Button, Text, ActivityIndicator, Portal, Dialog, Card } from 'react-native-paper';
+import { Button, Text, ActivityIndicator, Portal, Dialog, Card, TextInput, Divider } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 
@@ -39,6 +39,7 @@ export default function PredictScreen() {
   const [classificationResult, setClassificationResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDialogVisible, setIsDialogVisible] = useState(false);
+  const [textDescription, setTextDescription] = useState('');
 
   // Permissions state
   const [cameraPermissionInformation, requestCameraPermission] = ImagePicker.useCameraPermissions();
@@ -171,6 +172,49 @@ export default function PredictScreen() {
     }
   };
 
+  // Function to get prediction from text description
+  const handleTextPrediction = async () => {
+    if (!textDescription.trim()) {
+      Alert.alert("Input Required", "Please enter a description of the item.");
+      return;
+    }
+
+    setIsLoading(true);
+    setSelectedImage(null); // Clear any selected image
+    setClassificationResult(null);
+
+    try {
+      const response = await fetch(`${API_URL}/predict-text`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ description: textDescription }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to get text-based prediction');
+      }
+
+      // The backend now returns a simplified object
+      setClassificationResult({
+        category: result.category,
+        color: WASTE_CATEGORIES[result.category]?.color || '#8E8E93', // Use optional chaining and a fallback color
+        item: result.item,
+        confidence: 1, // Confidence is not applicable for text, but we can set it to 1
+      });
+      setIsDialogVisible(true);
+
+    } catch (error) {
+      console.error("Text Prediction Error:", error);
+      Alert.alert("Error", `Failed to get prediction: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const hideDialog = () => setIsDialogVisible(false);
 
   return (
@@ -179,6 +223,22 @@ export default function PredictScreen() {
         <Button icon="image" mode="contained" onPress={pickImage}>Select Image</Button>
         <Button icon="camera" mode="contained" onPress={takePhoto}>Take Photo</Button>
       </View>
+
+      <View style={styles.dividerContainer}>
+        <Divider style={styles.divider} />
+        <Text style={styles.dividerText}>OR</Text>
+        <Divider style={styles.divider} />
+      </View>
+
+      <TextInput
+        label="Describe the item (e.g., 'greasy pizza box')"
+        value={textDescription}
+        onChangeText={setTextDescription}
+        style={styles.textInput}
+      />
+      <Button icon="text-box-search" mode="contained" onPress={handleTextPrediction} style={styles.textButton}>
+        Predict from Description
+      </Button>
 
       {selectedImage && (
         <Image source={{ uri: selectedImage.uri }} style={styles.image} />
@@ -230,6 +290,24 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 20, // Adds space between the buttons
   },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '90%',
+    marginVertical: 25,
+  },
+  divider: {
+    flex: 1,
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    color: 'gray',
+  },
+  textInput: {
+    width: '100%',
+    marginBottom: 15,
+  },
+  textButton: { marginBottom: 20 },
   image: {
     width: 300,
     height: 300,

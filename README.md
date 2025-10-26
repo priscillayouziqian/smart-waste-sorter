@@ -1,20 +1,21 @@
 # Smart Waste Sorter
 
-A full-stack mobile application that uses a phone's camera and an image classification model to identify waste items. The app sends an image to a backend server, which communicates with the Azure Custom Vision service to classify the item and return the top predictions.
+A full-stack mobile application that uses Azure AI to identify waste items. Users can either take a photo for image classification or type a description for text-based analysis.
 
 ## Features
 
--   **Image Classification**: Identifies waste items using a trained Azure Custom Vision model.
+-   **Image Classification**: Uses a trained **Azure Custom Vision** model to identify waste from a photo.
+-   **Text-Based Prediction**: Uses **Azure OpenAI Service** (GPT) to determine the waste category from a user's text description.
+-   **Prediction History**: Saves image-based predictions with thumbnails for later review.
 -   **React Native App**: Cross-platform mobile app built with Expo.
 -   **Camera & Gallery**: Users can take a new photo or select an existing one from their device's gallery.
 -   **Python Backend**: A Flask API acts as a secure bridge between the app and the Azure service.
--   **Top Results**: Displays the top 3 predictions with their confidence scores.
 
 ## Technologies Used
 
 -   **Frontend**: React Native, Expo
 -   **Backend**: Python, Flask, Gunicorn
--   **Cloud AI**: Microsoft Azure Custom Vision
+-   **Cloud AI**: Microsoft Azure Custom Vision, Azure OpenAI Service
 -   **Deployment**: Render (for the backend API)
 
 ## Project Structure
@@ -44,8 +45,8 @@ This method connects your local frontend to the live backend server deployed on 
     -   Create or open the `.env` file.
     -   Update the `EXPO_PUBLIC_API_URL` to point to your live Render service URL.
         ```
-        # Replace with your actual Render URL
-        EXPO_PUBLIC_API_URL="https://your-app-name.onrender.com/predict"
+        # Replace with your actual Render service base URL
+        EXPO_PUBLIC_API_URL="https://your-app-name.onrender.com"
         ```
 
 2.  **Start the Frontend App:**
