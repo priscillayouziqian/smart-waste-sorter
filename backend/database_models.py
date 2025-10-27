@@ -19,4 +19,7 @@ class PredictionHistory(db.Model):
         """
         Provides a developer-friendly string representation of the object.
         """
-        return f'<PredictionHistory {self.id}: {self.predicted_tag} ({self.probability:.2f}%)>'
+        if self.probability is not None:
+            return f'<PredictionHistory {self.id}: {self.predicted_tag} ({self.probability:.2f}%)>'
+        else:
+            return f'<PredictionHistory {self.id}: {self.predicted_tag} (Text-based)>'
