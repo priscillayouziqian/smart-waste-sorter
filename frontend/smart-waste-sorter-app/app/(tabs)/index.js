@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1, // Use flexGrow to allow the container to expand and enable scrolling
     backgroundColor: '#fff',
-    alignItems: 'center',
+    alignItems: 'center', // This will now center items within the scrollable area
     justifyContent: 'center',
     padding: 20,
   },
