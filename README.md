@@ -78,6 +78,5 @@ Future improvements could include:
 
 ## My Other Projects
 
-Feel free to check out my other work:
--   Project 1 Name
--   Project 2 Name
+**Job Application Tracker:** [https://github.com/priscillayouziqian/job-application-tracker](https://github.com/priscillayouziqian/job-application-tracker) <br>
+**Member Management Panel:** [https://github.com/priscillayouziqian/Final-project-memberServicePanelApp](https://github.com/priscillayouziqian/Final-project-memberServicePanelApp) <br>
