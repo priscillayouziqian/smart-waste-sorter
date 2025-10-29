@@ -1,6 +1,9 @@
 # Smart Waste Sorter
 
 A full-stack mobile application that uses Azure AI to identify waste items. Users can either take a photo for image classification or type a description for text-based analysis.
+
+Link to demo video: [https://youtu.be/vm62C0FWiR8](https://youtu.be/vm62C0FWiR8)
+
 -   **Image Classification**: Uses a trained **Azure Custom Vision** model to identify waste from a photo.
 -   **Text-Based Prediction**: Uses **Azure OpenAI Service** (GPT) to determine the waste category from a user's text description.
 -   **Prediction History**: Saves image-based predictions with thumbnails for later review.
