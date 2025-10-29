@@ -10,7 +10,7 @@ Link to demo video: [https://youtu.be/vm62C0FWiR8](https://youtu.be/vm62C0FWiR8)
 
 image predict screen (main)           |  result module  |  text predict (optional)
 :-------------------------:|:-------------------------:|:-------------------------:
-![image]() |  ![image]() |  ![image]()
+<img src="./assets/IMG_3010.jpg" alt="Predict Screen" height="400"> | <img src="./assets/IMG_3008.jpg" alt="Result Module" height="400"> | <img src="./assets/IMG_3009.jpg" alt="Text Predict" height="400">
 
 ## How to Start the App
 
