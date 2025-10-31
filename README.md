@@ -8,7 +8,7 @@ Link to demo video: [https://youtu.be/vm62C0FWiR8](https://youtu.be/vm62C0FWiR8)
 -   **Text-Based Prediction**: Uses **Azure OpenAI Service** (GPT) to determine the waste category from a user's text description.
 -   **Prediction History**: Saves image-based predictions with thumbnails for later review.
 
-image predict screen (main)           |  result module  |  text predict (optional)
+  result module         |  image predict screen (main)  |  text predict (optional)
 :-------------------------:|:-------------------------:|:-------------------------:
 <img src="./assets/IMG_3010.jpg" alt="Predict Screen" height="400"> | <img src="./assets/IMG_3008.jpg" alt="Result Module" height="400"> | <img src="./assets/IMG_3009.jpg" alt="Text Predict" height="400">
 
